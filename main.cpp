@@ -1,12 +1,13 @@
 #include "buffer.h"
 #include "shader.h"
-#include "sprites.h"
+#include "sprite.h"
 #include "game.h"
 
 #include <cstdio>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+
 
 
 void error_callback(int error, const char* description) {
@@ -18,7 +19,9 @@ int main() {
     const size_t buffer_width = 224;
     const size_t buffer_height = 256;
 
-    Sprite alien_sprite = create_alien_sprite();
+    Sprite alien_sprite0 = create_alien_sprite();
+    Sprite alien_sprite1 = create_alien_animation_sprite();
+
     Sprite player_sprite = create_player_sprite();
 
     GLFWwindow* window;
@@ -106,15 +109,59 @@ int main() {
     // --- DRAW INITIAL SCENE ---
     for(size_t ai = 0; ai < game.num_aliens; ++ai) {
         const Alien& alien = game.aliens[ai];
-        buffer_sprite_draw(&buffer, alien_sprite,
+        buffer_sprite_draw(&buffer, alien_sprite0,
             alien.x, alien.y, rgb_to_uint32(128, 0, 0));
     }
 
-    buffer_sprite_draw(&buffer, player_sprite,
-        game.player.x, game.player.y, rgb_to_uint32(128, 0, 0));
+    // --- ANIMATION SETUP ---
+    glfwSwapInterval(1);
+    SpriteAnimation* alien_animation = create_alien_animation(&alien_sprite0, &alien_sprite1);
+
+
 
     // --- GAME LOOP ---
+    int player_move_dir = 1;
     while(!glfwWindowShouldClose(window)) {
+
+        buffer_clear(&buffer, clear_color);
+        
+        // PLAYER ANIMATION
+        if(game.player.x + player_sprite.width + player_move_dir >= game.width - 1) {
+            game.player.x = game.width - player_sprite.width - player_move_dir - 1;
+            player_move_dir *= -1;
+        } else if((int)game.player.x + player_move_dir <= 0) {
+            game.player.x = 0;
+            player_move_dir *= -1;
+        } else {
+            game.player.x += player_move_dir;
+        }
+
+        buffer_sprite_draw(
+            &buffer, 
+            player_sprite,
+            game.player.x, 
+            game.player.y, rgb_to_uint32(128, 0, 0)
+        );
+
+        // ALIEN ANIMATION
+        ++alien_animation->time;
+
+        if(alien_animation->time == alien_animation->num_frames * alien_animation->frame_duration) {
+            if(alien_animation->loop) {
+                alien_animation-> time = 0;
+            } else {
+                delete alien_animation;
+                alien_animation = nullptr;
+            }
+        }
+
+        for(size_t ai =0; ai < game.num_aliens; ++ai) {
+            const Alien& alien = game.aliens[ai];
+            size_t current_frame = alien_animation->time / alien_animation->frame_duration;
+            const Sprite& sprite = *alien_animation->frames[current_frame];
+            buffer_sprite_draw(&buffer, sprite, alien.x, alien.y, rgb_to_uint32(128, 0, 0));
+        }
+        
         glTexSubImage2D(
             GL_TEXTURE_2D, 0, 0, 0,
             buffer.width, buffer.height,

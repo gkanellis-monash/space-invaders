@@ -1,6 +1,7 @@
 
-
+# executable
 build/
+dbuild/
 .vscode/
 .DS_Store
 main
