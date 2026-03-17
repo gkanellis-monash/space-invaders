@@ -31,4 +31,6 @@ Sprite create_alien_animation_sprite();
 Sprite create_player_sprite();
 
 SpriteAnimation* create_alien_animation(Sprite* alien_sprite0, Sprite* alien_sprite1);
+void sprite_animation_update(SpriteAnimation* animation);
+
 

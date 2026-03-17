@@ -1,4 +1,5 @@
 #include "game.h"
+#include "sprite.h"
 
 
 void game_init(Game& game, size_t width, size_t height) {
@@ -19,4 +20,16 @@ void game_init(Game& game, size_t width, size_t height) {
         }
     }
 
+}
+
+void game_update_player(Game& game, Sprite player_sprite, int& player_move_dir) {
+    if(game.player.x + player_sprite.width + player_move_dir >= game.width - 1) {
+        game.player.x = game.width - player_sprite.width - player_move_dir - 1;
+        player_move_dir *= -1;
+    } else if((int)game.player.x + player_move_dir <= 0) {
+        game.player.x = 0;
+        player_move_dir *= -1;
+    } else {
+        game.player.x += player_move_dir;
+    }
 }

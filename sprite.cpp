@@ -73,6 +73,19 @@ SpriteAnimation* create_alien_animation(Sprite* alien_sprite0, Sprite* alien_spr
     return alien_animation;
 }
 
+void sprite_animation_update(SpriteAnimation* animation) {
+        ++animation->time;
+
+        if(animation->time == animation->num_frames * animation->frame_duration) {
+            if(animation->loop) {
+                animation-> time = 0;
+            } else {
+                delete animation;
+                animation = nullptr;
+            }
+        }
+}
+
 Sprite create_player_sprite() {
     Sprite sprite;
     sprite.width = 11;

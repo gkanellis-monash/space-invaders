@@ -3,6 +3,7 @@
 #include <cstddef>
 
 #include "alien.h"
+#include "sprite.h"
 
 struct Player {
     size_t x, y;
@@ -17,3 +18,4 @@ struct Game {
 };
 
 void game_init(Game& game, size_t width, size_t height);
+void game_update_player(Game& game, Sprite player_sprite, int& player_move_dir);
