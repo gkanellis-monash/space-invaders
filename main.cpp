@@ -1,8 +1,9 @@
 #include "buffer.h"
 #include "shader.h"
+#include "sprites.h"
+#include "game.h"
 
 #include <cstdio>
-#include <cstdint>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -17,21 +18,8 @@ int main() {
     const size_t buffer_width = 224;
     const size_t buffer_height = 256;
 
-    // -- SPRITE SETUP --
-    Sprite alien_sprite;
-    alien_sprite.width = 11;
-    alien_sprite.height = 8;
-    alien_sprite.data = new uint8_t[11 * 8] 
-    {
-        0,0,1,0,0,0,0,0,1,0,0, // ..@.....@..
-        0,0,0,1,0,0,0,1,0,0,0, // ...@...@...
-        0,0,1,1,1,1,1,1,1,0,0, // ..@@@@@@@..
-        0,1,1,0,1,1,1,0,1,1,0, // .@@.@@@.@@.
-        1,1,1,1,1,1,1,1,1,1,1, // @@@@@@@@@@@
-        1,0,1,1,1,1,1,1,1,0,1, // @.@@@@@@@.@
-        1,0,1,0,0,0,0,0,1,0,1, // @.@.....@.@
-        0,0,0,1,1,0,1,1,0,0,0  // ...@@.@@...
-    };
+    Sprite alien_sprite = create_alien_sprite();
+    Sprite player_sprite = create_player_sprite();
 
     GLFWwindow* window;
 
@@ -41,13 +29,11 @@ int main() {
         return -1;
     }
 
-    // give "hints" about GLFW versioning
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
-    /* Create a windowed mode window and its OpenGL context */
     window = glfwCreateWindow(640, 480, "Space Invaders", NULL, NULL);
     if(!window) {
         glfwTerminate();
@@ -66,89 +52,29 @@ int main() {
     int glVersion[2] = {-1, -1};
     glGetIntegerv(GL_MAJOR_VERSION, &glVersion[0]);
     glGetIntegerv(GL_MINOR_VERSION, &glVersion[1]);
-
     printf("Using OpenGL: %d.%d\n", glVersion[0], glVersion[1]);
 
     // --- BUFFER SETUP ---
     uint32_t clear_color = rgb_to_uint32(0, 128, 0);
     Buffer buffer;
-    buffer.width    = buffer_width;
-    buffer.height   = buffer_height;
-    buffer.data     = new uint32_t[buffer.width * buffer.height];
+    buffer.width  = buffer_width;
+    buffer.height = buffer_height;
+    buffer.data   = new uint32_t[buffer.width * buffer.height];
     buffer_clear(&buffer, clear_color);
 
-    buffer_sprite_draw(
-        &buffer, alien_sprite,
-        112, 128, rgb_to_uint32(128, 0, 0)
-    );
+    // --- GAME SETUP ---
+    Game game;
+    game_init(game, buffer.width, buffer.height);
 
-
-    // --- SHADER SOURCES ---
-    const char* vertex_shader =
-        "\n"
-        "#version 330\n"
-        "\n"
-        "noperspective out vec2 TexCoord;\n"
-        "\n"
-        "void main(void){\n"
-        "\n"
-        "   TexCoord.x = (gl_VertexID == 2)? 2.0: 0.0;\n"
-        "   TexCoord.y = (gl_VertexID == 1)? 2.0: 0.0;\n"
-        "   \n"
-        "   gl_Position = vec4(2.0 * TexCoord - 1.0, 0.0, 1.0);\n"
-        "}\n";
-
-    const char* fragment_shader =
-        "\n"
-        "#version 330\n"
-        "\n"
-        "uniform sampler2D buffer;\n"
-        "noperspective in vec2 TexCoord;\n"
-        "\n"
-        "out vec3 outColor;\n"
-        "\n"
-        "void main(void) {\n"
-        "    outColor = texture(buffer, TexCoord).rgb;\n"
-        "}\n";
-
-    // --- VAO + SHADER COMPILATION ---
-
+    // --- SHADER + VAO SETUP ---
     GLuint fullscreen_triangle_vao;
-    glGenVertexArrays(1, &fullscreen_triangle_vao);
-    glBindVertexArray(fullscreen_triangle_vao);
-
-    GLuint shader_id = glCreateProgram();
-
-    // create vertex shader
-    {
-        GLuint shader_vp = glCreateShader(GL_VERTEX_SHADER);
-
-        glShaderSource(shader_vp, 1, &vertex_shader, 0);
-        glCompileShader(shader_vp);
-        validate_shader(shader_vp, vertex_shader);
-        glAttachShader(shader_id, shader_vp);
-
-        glDeleteShader(shader_vp);
-    }
-
-    // create fragment shader
-    {
-        GLuint shader_fp = glCreateShader(GL_FRAGMENT_SHADER);
-
-        glShaderSource(shader_fp, 1, &fragment_shader, 0);
-        glCompileShader(shader_fp);
-        validate_shader(shader_fp, fragment_shader);
-        glAttachShader(shader_id, shader_fp);
-
-        glDeleteShader(shader_fp);
-    }
-
-    glLinkProgram(shader_id);
-
-    if(!validate_program(shader_id)) {
-        fprintf(stderr, "Error while validating shader.\n");
+    GLuint shader_id = create_shader_program(
+        vertex_shader_source,
+        fragment_shader_source,
+        fullscreen_triangle_vao
+    );
+    if(!shader_id) {
         glfwTerminate();
-        glDeleteVertexArrays(1, &fullscreen_triangle_vao);
         delete[] buffer.data;
         return -1;
     }
@@ -177,13 +103,23 @@ int main() {
     glDisable(GL_DEPTH_TEST);
     glBindVertexArray(fullscreen_triangle_vao);
 
-    // --- SHOW WINDOW ---
+    // --- DRAW INITIAL SCENE ---
+    for(size_t ai = 0; ai < game.num_aliens; ++ai) {
+        const Alien& alien = game.aliens[ai];
+        buffer_sprite_draw(&buffer, alien_sprite,
+            alien.x, alien.y, rgb_to_uint32(128, 0, 0));
+    }
+
+    buffer_sprite_draw(&buffer, player_sprite,
+        game.player.x, game.player.y, rgb_to_uint32(128, 0, 0));
+
+    // --- GAME LOOP ---
     while(!glfwWindowShouldClose(window)) {
         glTexSubImage2D(
-            GL_TEXTURE_2D, 0, 0, 0,          // texture, mipmap level, x offset, y offset
-            buffer.width, buffer.height,       // dimensions
-            GL_RGBA, GL_UNSIGNED_INT_8_8_8_8,  // format
-            buffer.data                        // new pixel data
+            GL_TEXTURE_2D, 0, 0, 0,
+            buffer.width, buffer.height,
+            GL_RGBA, GL_UNSIGNED_INT_8_8_8_8,
+            buffer.data
         );
 
         glDrawArrays(GL_TRIANGLES, 0, 3);

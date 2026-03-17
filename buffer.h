@@ -1,7 +1,7 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
-#include <cstdio>
 
 struct Buffer {
     size_t width, height;
@@ -13,9 +13,7 @@ struct Sprite {
     uint8_t* data;
 };
 
-
 uint32_t rgb_to_uint32(uint8_t r, uint8_t g, uint8_t b);
-
 
 void buffer_sprite_draw(
     Buffer* buffer, const Sprite& sprite,
