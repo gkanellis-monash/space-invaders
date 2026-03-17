@@ -16,7 +16,7 @@ struct Buffer {
 
 struct Sprite {
     size_t width, height;
-    uint32_t* data;
+    uint8_t* data;
 };
 
 uint32_t rgb_to_uint32(uint8_t r, uint8_t g, uint8_t b) {
@@ -30,8 +30,22 @@ void buffer_clear(Buffer* buffer, uint32_t color) {
 }
 
 void buffer_sprite_draw(
-
+    Buffer* buffer, const Sprite& sprite,
+    size_t x, size_t y, uint32_t color
 ) {
+    for(size_t xi = 0; xi < sprite.width; ++xi) {
+        for(size_t yi = 0; yi < sprite.height; ++yi) {
+            size_t sy = sprite.height - 1 + y - yi;
+            size_t sx = x + xi;
+            if(
+                sprite.data[yi * sprite.width + xi] &&
+                sy < buffer -> height && sx < buffer -> width
+            ) {
+                buffer -> data[sy * buffer -> width + sx] = color;
+            }
+            
+        }
+    }
 
 }
 
@@ -67,6 +81,22 @@ bool validate_program(GLuint program) {
 int main() {
     const size_t buffer_width = 224;
     const size_t buffer_height = 256;
+
+    // -- SPRITE SETUP --
+    Sprite alien_sprite;
+    alien_sprite.width = 11;
+    alien_sprite.height = 8;
+    alien_sprite.data = new uint8_t[11 * 8] 
+    {
+        0,0,1,0,0,0,0,0,1,0,0, // ..@.....@..
+        0,0,0,1,0,0,0,1,0,0,0, // ...@...@...
+        0,0,1,1,1,1,1,1,1,0,0, // ..@@@@@@@..
+        0,1,1,0,1,1,1,0,1,1,0, // .@@.@@@.@@.
+        1,1,1,1,1,1,1,1,1,1,1, // @@@@@@@@@@@
+        1,0,1,1,1,1,1,1,1,0,1, // @.@@@@@@@.@
+        1,0,1,0,0,0,0,0,1,0,1, // @.@.....@.@
+        0,0,0,1,1,0,1,1,0,0,0  // ...@@.@@...
+    };
 
     GLFWwindow* window;
 
@@ -111,6 +141,11 @@ int main() {
     buffer.height   = buffer_height;
     buffer.data     = new uint32_t[buffer.width * buffer.height];
     buffer_clear(&buffer, clear_color);
+
+    buffer_sprite_draw(
+        &buffer, alien_sprite,
+        112, 128, rgb_to_uint32(128, 0, 0)
+    );
 
 
     // --- SHADER SOURCES ---
@@ -209,10 +244,11 @@ int main() {
 
     // --- SHOW WINDOW ---
     while(!glfwWindowShouldClose(window)) {
-        glTexImage2D(
-            GL_TEXTURE_2D, 0, GL_RGB8,
-            buffer.width, buffer.height, 0,
-            GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, buffer.data
+        glTexSubImage2D(
+            GL_TEXTURE_2D, 0, 0, 0,          // texture, mipmap level, x offset, y offset
+            buffer.width, buffer.height,       // dimensions
+            GL_RGBA, GL_UNSIGNED_INT_8_8_8_8,  // format
+            buffer.data                        // new pixel data
         );
 
         glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -223,7 +259,6 @@ int main() {
     // --- CLEANUP ---
     glfwDestroyWindow(window);
     glfwTerminate();
-
 
     return 0;
 }
