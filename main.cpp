@@ -9,13 +9,35 @@
 #include <GLFW/glfw3.h>
 
 
+int move_dir;
+bool game_running = false;
 
 void error_callback(int error, const char* description) {
     fprintf(stderr, "Error: %s\n", description);
 }
 
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    switch(key) {
+    case GLFW_KEY_ESCAPE:
+        if(action == GLFW_PRESS) game_running = false;
+            break;
+        default:
+            break;
+    case GLFW_KEY_RIGHT:
+        if(action == GLFW_PRESS) move_dir += 1;
+        else if(action == GLFW_RELEASE) move_dir -= 1;
+        break;
+    case GLFW_KEY_LEFT:
+        if(action == GLFW_PRESS) move_dir -= 1;
+        else if(action == GLFW_RELEASE) move_dir += 1;
+        break;
+    }
+}
+
 
 int main() {
+    game_running = true;
+
     const size_t buffer_width = 224;
     const size_t buffer_height = 256;
 
@@ -42,6 +64,8 @@ int main() {
         glfwTerminate();
         return -1;
     }
+
+    glfwSetKeyCallback(window, key_callback);
 
     glfwMakeContextCurrent(window);
 
@@ -111,15 +135,13 @@ int main() {
     SpriteAnimation* alien_animation = create_alien_animation(&alien_sprite0, &alien_sprite1);
 
 
-
     // --- GAME LOOP ---
-    int player_move_dir = 1;
-    while(!glfwWindowShouldClose(window)) {
+    while(!glfwWindowShouldClose(window) && game_running) {
 
         buffer_clear(&buffer, clear_color);
         
         // PLAYER MOVEMENT
-        game_update_player(game, player_sprite, player_move_dir);
+        game_update_player(game, player_sprite.width, move_dir);
         buffer_sprite_draw(
             &buffer, 
             player_sprite,
