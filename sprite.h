@@ -25,15 +25,15 @@ void buffer_sprite_draw(
 );
 
 
-Sprite create_alien_sprite();
-Sprite create_alien_animation_sprite();
+Sprite* create_alien_sprites();
+Sprite create_alien_death_sprite();
 
 Sprite create_bullet_sprite();
 
 Sprite create_player_sprite();
 
 SpriteAnimation* create_alien_animation(Sprite* alien_sprite0, Sprite* alien_sprite1);
+
 void sprite_animation_update(SpriteAnimation* animation);
 
 
-    

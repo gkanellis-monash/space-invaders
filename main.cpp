@@ -45,12 +45,11 @@ int main() {
     const size_t buffer_width = 224;
     const size_t buffer_height = 256;
 
-    Sprite alien_sprite0 = create_alien_sprite();
-    Sprite alien_sprite1 = create_alien_animation_sprite();
-
+    Sprite* alien_sprites = create_alien_sprites();
     Sprite bullet_sprite = create_bullet_sprite();
-
     Sprite player_sprite = create_player_sprite();
+
+    Sprite alien_death_sprite = create_alien_death_sprite();
 
     GLFWwindow* window;
 
@@ -138,7 +137,10 @@ int main() {
 
     // --- ANIMATION SETUP ---
     glfwSwapInterval(1);
-    SpriteAnimation* alien_animation = create_alien_animation(&alien_sprite0, &alien_sprite1);
+    SpriteAnimation* alien_animations[3];
+    alien_animations[0] = create_alien_animation(&alien_sprites[0], &alien_sprites[1]);
+    alien_animations[1] = create_alien_animation(&alien_sprites[2], &alien_sprites[3]);
+    alien_animations[2] = create_alien_animation(&alien_sprites[4], &alien_sprites[5]);
 
 
     // --- GAME LOOP ---
@@ -156,17 +158,42 @@ int main() {
         );
 
         // DRAW ALIENS
-        sprite_animation_update(alien_animation);
+        for(size_t i = 0; i < 3; ++i) {
+            sprite_animation_update(alien_animations[i]);
+        }
         for(size_t ai =0; ai < game.num_aliens; ++ai) {
             const Alien& alien = game.aliens[ai];
-            size_t current_frame = alien_animation->time / alien_animation->frame_duration;
-            const Sprite& sprite = *alien_animation->frames[current_frame];
-            buffer_sprite_draw(
-                &buffer, sprite, 
-                alien.x, alien.y, 
-                rgb_to_uint32(128, 0, 0)
-            );
+
+            if(alien.type == ALIEN_DEAD) {
+                // dont draw anything (already dead)
+                if(!game.death_counters[ai]) {
+                    continue;
+                }
+                // draw alien currently dying
+                buffer_sprite_draw(
+                    &buffer, alien_death_sprite,
+                    alien.x, alien.y,
+                    rgb_to_uint32(128, 0, 0)
+                );
+    
+            } else {
+                // draw alien as normal
+                const SpriteAnimation& animation = *alien_animations[alien.type - 1];
+                size_t current_frame = animation.time / animation.frame_duration;
+                const Sprite& sprite = *animation.frames[current_frame];
+                buffer_sprite_draw(&buffer, sprite, alien.x, alien.y, rgb_to_uint32(128, 0, 0));
+            }
+
         }
+
+        for(size_t ai = 0; ai < game.num_aliens; ++ai) {
+            const Alien& alien = game.aliens[ai];
+            if(alien.type == ALIEN_DEAD && game.death_counters[ai]) {
+                --game.death_counters[ai];
+            }
+        }
+        game_update_aliens(game);
+
 
         // DRAW BULLETS
         for(size_t bi = 0; bi < game.num_bullets; ++bi) {

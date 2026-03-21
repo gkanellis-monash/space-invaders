@@ -23,8 +23,10 @@ struct Game {
     Player player;
     Bullet bullets[GAME_MAX_BULLETS];
     size_t num_bullets;
+    uint8_t* death_counters;
 };
 
 void game_init(Game& game, size_t width, size_t height);
 void game_update_player(Game& game, int player_sprite_width, int player_move_dir);
 void game_update_bullet(Game& game, size_t game_height, size_t bullet_sprite_height);
+void game_update_aliens(Game& game);

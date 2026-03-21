@@ -8,19 +8,26 @@ void game_init(Game& game, size_t width, size_t height) {
     game.num_aliens = 55;
     game.aliens = new Alien[game.num_aliens];
 
-
     game.player.x = 112 - 5;
     game.player.y = 32;
 
     game.player.life = 3;
     game.num_bullets = 0;
+    game.death_counters = new uint8_t[game.num_aliens];
 
     for(size_t yi = 0; yi < 5; ++yi) {
         for(size_t xi = 0; xi < 11; ++xi) {
+            Alien& alien = game.aliens[yi * 11 + xi];
             game.aliens[yi * 11 + xi].x = 16 * xi + 20;
             game.aliens[yi * 11 + xi].y = 17 * yi + 128;
+            alien.type = (yi < 1) ? ALIEN_TYPE_C : (yi < 3) ? ALIEN_TYPE_B : ALIEN_TYPE_A;
         }
     }
+
+    for(size_t i = 0; i < game.num_aliens; ++i) {
+        game.death_counters[i] = 0;
+    }
+
 
 }
 
@@ -48,3 +55,12 @@ void game_update_bullet(Game& game, size_t game_height, size_t bullet_sprite_hei
         ++bi;
     }
 }
+
+void game_update_aliens(Game& game) {
+    for(size_t ai = 0; ai < game.num_aliens; ++ai) {
+        if(game.aliens[ai].type == ALIEN_DEAD && game.death_counters[ai] > 0) {
+            --game.death_counters[ai];
+        }
+    }
+}
+
