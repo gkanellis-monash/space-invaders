@@ -1,5 +1,6 @@
 #include "sprite.h"
 #include "buffer.h"
+#include "game.h"
 
 
 void buffer_sprite_draw(
@@ -101,4 +102,18 @@ Sprite create_player_sprite() {
         1,1,1,0,1,1,1,0,1,1,1  // @@@.@@@.@@@
     };
     return sprite;
+}
+
+
+Sprite create_bullet_sprite() {
+    Sprite bullet_sprite;
+    bullet_sprite.width = 1;
+    bullet_sprite.height = 3;
+    bullet_sprite.data = new uint8_t[3]
+    {
+        1, // @
+        1, // @
+        1  // @
+    };
+    return bullet_sprite;
 }

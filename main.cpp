@@ -11,6 +11,7 @@
 
 int move_dir;
 bool game_running = false;
+bool fire_pressed = false;
 
 void error_callback(int error, const char* description) {
     fprintf(stderr, "Error: %s\n", description);
@@ -31,6 +32,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         if(action == GLFW_PRESS) move_dir -= 1;
         else if(action == GLFW_RELEASE) move_dir += 1;
         break;
+    case GLFW_KEY_SPACE:
+        if(action == GLFW_RELEASE) fire_pressed = true;
+        break;
     }
 }
 
@@ -43,6 +47,8 @@ int main() {
 
     Sprite alien_sprite0 = create_alien_sprite();
     Sprite alien_sprite1 = create_alien_animation_sprite();
+
+    Sprite bullet_sprite = create_bullet_sprite();
 
     Sprite player_sprite = create_player_sprite();
 
@@ -140,7 +146,7 @@ int main() {
 
         buffer_clear(&buffer, clear_color);
         
-        // PLAYER MOVEMENT
+        // DRAW PLAYER
         game_update_player(game, player_sprite.width, move_dir);
         buffer_sprite_draw(
             &buffer, 
@@ -149,15 +155,28 @@ int main() {
             game.player.y, rgb_to_uint32(128, 0, 0)
         );
 
-        // ALIEN ANIMATION
+        // DRAW ALIENS
         sprite_animation_update(alien_animation);
-
         for(size_t ai =0; ai < game.num_aliens; ++ai) {
             const Alien& alien = game.aliens[ai];
             size_t current_frame = alien_animation->time / alien_animation->frame_duration;
             const Sprite& sprite = *alien_animation->frames[current_frame];
-            buffer_sprite_draw(&buffer, sprite, alien.x, alien.y, rgb_to_uint32(128, 0, 0));
+            buffer_sprite_draw(
+                &buffer, sprite, 
+                alien.x, alien.y, 
+                rgb_to_uint32(128, 0, 0)
+            );
         }
+
+        // DRAW BULLETS
+        for(size_t bi = 0; bi < game.num_bullets; ++bi) {
+            buffer_sprite_draw(
+                &buffer, bullet_sprite,
+                game.bullets[bi].x, game.bullets[bi].y, 
+                rgb_to_uint32(128, 0, 0)
+            );
+        }
+        game_update_bullet(game, buffer.height, bullet_sprite.height);
         
         // UPLOAD TO GPU AND PRESENT
         glTexSubImage2D(
@@ -170,7 +189,17 @@ int main() {
         glDrawArrays(GL_TRIANGLES, 0, 3);
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        if(fire_pressed && game.num_bullets < GAME_MAX_BULLETS) {
+            game.bullets[game.num_bullets].x = game.player.x + player_sprite.width / 2;
+            game.bullets[game.num_bullets].y = game.player.y + player_sprite.height;
+            game.bullets[game.num_bullets].dir = 2;
+            ++game.num_bullets;
+        }
+        fire_pressed = false;
     }
+
+
 
     // --- CLEANUP ---
     glfwDestroyWindow(window);
